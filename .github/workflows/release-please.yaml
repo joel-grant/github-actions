@@ -1,12 +1,20 @@
 on:
-  workflow_run:
-    workflows:
-      - "Build and Push"
-      - "Test and Lint"
-    branches:
-      - main
-    types:
-      - completed
+  workflow_call:
+    inputs:
+      config-file:
+        description: 'Path to the release-please config file'
+        required: false
+        type: string
+        default: '.github/release-please-config.json'
+      manifest-file:
+        description: 'Path to the release-please manifest file'
+        required: false
+        type: string
+        default: '.github/.release-please-manifest.json'
+    secrets:
+      release-token:
+        description: 'Token for release-please action'
+        required: true
 
 permissions:
   contents: write
@@ -20,6 +28,6 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@v4
         with:
-          token: ${{ secrets.MY_RELEASE_PLEASE_TOKEN }}
-          config-file: .github/release-please-config.json
-          manifest-file: .github/.release-please-manifest.json
+          token: ${{ secrets.release-token }}
+          config-file: ${{ inputs.config-file }}
+          manifest-file: ${{ inputs.manifest-file }}
