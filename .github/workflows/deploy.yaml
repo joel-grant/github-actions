@@ -94,6 +94,8 @@ jobs:
 
       - name: Deploy Chart
         run: |
+          DEPLOYED_AT=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          echo "Setting DEPLOYED_AT to $DEPLOYED_AT"
           REPO_NAME=${GITHUB_REPOSITORY##*/}
           REPO_NAME="${REPO_NAME//_/-}"
           helm upgrade --install --set fullnameOverride=$REPO_NAME --set serviceAccount.name=$REPO_NAME --set image.repository=${{ secrets.dockerhub_username }}/$REPO_NAME:$COMMIT_HASH --set-json='imagePullSecrets=[{"name": "${{ secrets.secret_name }}"}]' --set-json='env_variables=[{"name": "RAILS_ENV", "value": "${{ secrets.rails_env }}"}, {"name": "RAILS_MASTER_KEY", "value": "${{ secrets.rails_master_key }}"}, {"name": "POSTGRES_PORT", "value": "${{ secrets.postgres_port }}"}, {"name": "POSTGRES_DB", "value": "${{ secrets.postgres_db }}"}, {"name": "POSTGRES_HOST", "value": "${{ secrets.postgres_host }}"}, {"name": "POSTGRES_USER", "value": "${{ secrets.postgres_user }}"}, {"name": "POSTGRES_PASSWORD", "value": "${{ secrets.postgres_password }}"}]' $REPO_NAME ${{ secrets.helm_chart }} \
