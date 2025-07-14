@@ -16,11 +16,6 @@ on:
         required: false
         type: string
         default: 'test'
-      postgres_version:
-        description: 'PostgreSQL version'
-        required: false
-        type: string
-        default: '14.12-alpine'
       postgres_db:
         description: 'PostgreSQL database name'
         required: false
@@ -40,7 +35,7 @@ on:
         description: 'Skip RuboCop linting'
         required: false
         type: boolean
-        default: true
+        default: false
     secrets:
       dockerhub_username:
         description: 'DockerHub username'
@@ -57,7 +52,7 @@ jobs:
       DATABASE_URL: "postgres://${{ inputs.postgres_user }}:${{ inputs.postgres_password }}@localhost:5432/${{ inputs.postgres_db }}"
     services:
       postgres:
-        image: postgres:${{ inputs.postgres_version }}
+        image: postgres:14.12-alpine
         ports:
           - "5432:5432"
         env:
