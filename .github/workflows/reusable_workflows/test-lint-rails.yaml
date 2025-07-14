@@ -7,15 +7,10 @@ on:
         required: true
         type: string
       ruby_version:
-        description: 'Ruby version to use (defaults to .ruby-version file)'
+        description: 'Ruby version to use (defaults to 3.4.3)'
         required: false
         type: string
-        default: '.ruby-version'
-      rails_env:
-        description: 'Rails environment'
-        required: false
-        type: string
-        default: 'test'
+        default: '3.4.3'
       postgres_db:
         description: 'PostgreSQL database name'
         required: false
@@ -48,7 +43,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      RAILS_ENV: ${{ inputs.rails_env }}
+      RAILS_ENV: test
       DATABASE_URL: "postgres://${{ inputs.postgres_user }}:${{ inputs.postgres_password }}@localhost:5432/${{ inputs.postgres_db }}"
     services:
       postgres:
