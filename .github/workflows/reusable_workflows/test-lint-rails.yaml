@@ -72,12 +72,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      # Add or replace dependency steps here
       - name: Install Ruby and gems
-        uses: ruby/setup-ruby@${{ inputs.setup_ruby_version }}
+        uses: ruby/setup-ruby@1.234.0
         with:
+          ruby-version: ${{ inputs.ruby_version }}
           bundler-cache: true
-      # Add or replace database setup steps here
       - name: Set up database schema
         run: bin/rails db:schema:load
       - name: Run tests
@@ -89,19 +88,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Install Ruby and gems
-        uses: ruby/setup-ruby@${{ inputs.setup_ruby_version }}
+        uses: ruby/setup-ruby@1.234.0
         with:
+          ruby-version: ${{ inputs.ruby_version }}
           bundler-cache: true
       - name: Resolve bundler with binstubs
         run: bundle binstubs bundler --force
       - name: Generate binstubs
         run: bundle binstubs bundler-audit brakeman rubocop
-      # Add or replace any other lints here
       - name: Security audit dependencies
         run: bin/bundler-audit --update
       - name: Security audit application code
         run: bin/brakeman -q -w2
-        # ToDo: Turn back on
       - name: Lint Ruby files
         if: ${{ !inputs.skip_rubocop }}
         run: bin/rubocop --parallel
