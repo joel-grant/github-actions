@@ -1,0 +1,70 @@
+# Template for using the reusable Deploy workflow
+# This shows how to call the deploy.yaml reusable workflow
+
+name: Deploy Application
+
+on:
+  workflow_run:
+    workflows:
+      - "Build and Push"
+    branches:
+      - main
+    types:
+      - completed
+  # Optional: Allow manual deployment
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+          - development
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy.yaml
+    with:
+      environment: ${{ github.event.inputs.environment || 'production' }}
+    secrets:
+      kubeconfig: ${{ secrets.KUBECONFIG }}
+      dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
+      secret_name: ${{ secrets.SECRET_NAME }}
+      rails_env: ${{ secrets.RAILS_ENV }}
+      rails_master_key: ${{ secrets.RAILS_MASTER_KEY }}
+      postgres_port: ${{ secrets.POSTGRES_PORT }}
+      postgres_db: ${{ secrets.POSTGRES_DB }}
+      postgres_host: ${{ secrets.POSTGRES_HOST }}
+      postgres_user: ${{ secrets.POSTGRES_USER }}
+      postgres_password: ${{ secrets.POSTGRES_PASSWORD }}
+      plant_coach_weather_api_base_url: ${{ secrets.PLANT_COACH_WEATHER_API_BASE_URL }}
+      helm_chart: ${{ secrets.HELM_CHART }}
+      k8s_environment: ${{ secrets.K8S_ENVIRONMENT }}
+      cloudsmith_username: ${{ secrets.CLOUDSMITH_USERNAME }}
+      cloudsmith_api_key: ${{ secrets.CLOUDSMITH_API_KEY }}
+
+# Alternative: Using secrets: inherit (passes ALL secrets automatically)
+# jobs:
+#   deploy:
+#     uses: ./.github/workflows/deploy.yaml
+#     with:
+#       environment: production
+#     secrets: inherit
+
+# Example: Deploy to multiple environments
+# jobs:
+#   deploy-staging:
+#     uses: ./.github/workflows/deploy.yaml
+#     with:
+#       environment: staging
+#     secrets: inherit
+#   
+#   deploy-production:
+#     needs: deploy-staging
+#     uses: ./.github/workflows/deploy.yaml
+#     with:
+#       environment: production
+#     secrets: inherit
