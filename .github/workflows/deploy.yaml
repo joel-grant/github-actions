@@ -94,7 +94,7 @@ jobs:
 
       - name: Deploy Chart
         run: |
-          DEPLOYED_AT=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          DEPLOYED_AT=$(date +"%Y-%m-%d %H:%M:%S %Z")
           echo "Setting DEPLOYED_AT to $DEPLOYED_AT"
           REPO_NAME=${GITHUB_REPOSITORY##*/}
           REPO_NAME="${REPO_NAME//_/-}"
