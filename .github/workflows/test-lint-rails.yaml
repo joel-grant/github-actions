@@ -112,19 +112,19 @@ jobs:
         run: git fetch
 
       - name: Run RubyCritic
-        if: github.ref != 'refs/heads/main' && ${{ !inputs.skip_rubycritic }}
+        if: github.ref != 'refs/heads/main' || ${{ !inputs.skip_rubycritic }}
         run: |
           bundle exec rubycritic --mode-ci --no-browser
 
       - name: Upload RubyCritic report
-        if: always() && github.ref != 'refs/heads/main' && ${{ !inputs.skip_rubycritic }}
+        if: always() && github.ref != 'refs/heads/main' || ${{ !inputs.skip_rubycritic }}
         uses: actions/upload-artifact@v4
         with:
           name: rubycritic-report
           path: tmp/rubycritic
 
       - name: Deploy RubyCritic report to GitHub Pages
-        if: always() && github.ref != 'refs/heads/main' && ${{ !inputs.skip_rubycritic }}
+        if: always() && github.ref != 'refs/heads/main' || ${{ !inputs.skip_rubycritic }}
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
