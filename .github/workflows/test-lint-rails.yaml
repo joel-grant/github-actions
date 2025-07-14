@@ -129,4 +129,4 @@ jobs:
       - name: View Job Output
         if: always()
         run: |
-          echo "View Report: https://plant-coach.github.io/${{ inputs.repo_name }}/compare/main/overview.html"
+          echo "View Report: https://joel-grant.github.io/${{ inputs.repo_name }}/compare/main/overview.html"

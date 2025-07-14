@@ -48,9 +48,7 @@ on:
       postgres_password:
         description: 'PostgreSQL password'
         required: true
-      plant_coach_weather_api_base_url:
-        description: 'Weather API base URL'
-        required: true
+
       helm_chart:
         description: 'Helm chart reference'
         required: true
@@ -95,7 +93,7 @@ jobs:
         run: |
           REPO_NAME=${GITHUB_REPOSITORY##*/}
           REPO_NAME="${REPO_NAME//_/-}"
-          helm upgrade --install --set fullnameOverride=$REPO_NAME --set serviceAccount.name=$REPO_NAME --set image.repository=${{ secrets.dockerhub_username }}/$REPO_NAME:$COMMIT_HASH --set-json='imagePullSecrets=[{"name": "${{ secrets.secret_name }}"}]' --set-json='env_variables=[{"name": "RAILS_ENV", "value": "${{ secrets.rails_env }}"}, {"name": "RAILS_MASTER_KEY", "value": "${{ secrets.rails_master_key }}"}, {"name": "POSTGRES_PORT", "value": "${{ secrets.postgres_port }}"}, {"name": "POSTGRES_DB", "value": "${{ secrets.postgres_db }}"}, {"name": "POSTGRES_HOST", "value": "${{ secrets.postgres_host }}"}, {"name": "POSTGRES_USER", "value": "${{ secrets.postgres_user }}"}, {"name": "POSTGRES_PASSWORD", "value": "${{ secrets.postgres_password }}"}, {"name": "PLANT_COACH_WEATHER_API_BASE_URL", "value": "${{ secrets.plant_coach_weather_api_base_url }}"}]' $REPO_NAME ${{ secrets.helm_chart }} \
+          helm upgrade --install --set fullnameOverride=$REPO_NAME --set serviceAccount.name=$REPO_NAME --set image.repository=${{ secrets.dockerhub_username }}/$REPO_NAME:$COMMIT_HASH --set-json='imagePullSecrets=[{"name": "${{ secrets.secret_name }}"}]' --set-json='env_variables=[{"name": "RAILS_ENV", "value": "${{ secrets.rails_env }}"}, {"name": "RAILS_MASTER_KEY", "value": "${{ secrets.rails_master_key }}"}, {"name": "POSTGRES_PORT", "value": "${{ secrets.postgres_port }}"}, {"name": "POSTGRES_DB", "value": "${{ secrets.postgres_db }}"}, {"name": "POSTGRES_HOST", "value": "${{ secrets.postgres_host }}"}, {"name": "POSTGRES_USER", "value": "${{ secrets.postgres_user }}"}, {"name": "POSTGRES_PASSWORD", "value": "${{ secrets.postgres_password }}"}]' $REPO_NAME ${{ secrets.helm_chart }} \
           --namespace ${{ secrets.k8s_environment }} \
           --kube-context "$KUBE_CONTEXT" \
           --username ${{ secrets.cloudsmith_username }} \
