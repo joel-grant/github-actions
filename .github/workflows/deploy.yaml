@@ -93,6 +93,8 @@ jobs:
           echo "${{ secrets.kubeconfig }}" > /home/runner/.kube/config
 
       - name: Deploy Chart
+        env:
+          DEPLOYED_AT: ${{ github.event.head_commit.timestamp }}
         run: |
           REPO_NAME=${GITHUB_REPOSITORY##*/}
           REPO_NAME="${REPO_NAME//_/-}"
