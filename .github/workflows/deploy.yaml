@@ -1,0 +1,102 @@
+# Alternative usage with secrets: inherit
+# This passes ALL secrets from the calling repository automatically
+# jobs:
+#   deploy:
+#     uses: ./.github/workflows/deploy.yaml
+#     with:
+#       environment: production
+#     secrets: inherit
+
+name: Deploy/Release Chart
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: false
+        type: string
+        default: 'production'
+    secrets:
+      kubeconfig:
+        description: 'Kubernetes config'
+        required: true
+      dockerhub_username:
+        description: 'DockerHub username'
+        required: true
+      secret_name:
+        description: 'Image pull secret name'
+        required: true
+      rails_env:
+        description: 'Rails environment'
+        required: true
+      rails_master_key:
+        description: 'Rails master key'
+        required: true
+      postgres_port:
+        description: 'PostgreSQL port'
+        required: true
+      postgres_db:
+        description: 'PostgreSQL database name'
+        required: true
+      postgres_host:
+        description: 'PostgreSQL host'
+        required: true
+      postgres_user:
+        description: 'PostgreSQL user'
+        required: true
+      postgres_password:
+        description: 'PostgreSQL password'
+        required: true
+      plant_coach_weather_api_base_url:
+        description: 'Weather API base URL'
+        required: true
+      helm_chart:
+        description: 'Helm chart reference'
+        required: true
+      k8s_environment:
+        description: 'Kubernetes namespace/environment'
+        required: true
+      cloudsmith_username:
+        description: 'Cloudsmith username'
+        required: true
+      cloudsmith_api_key:
+        description: 'Cloudsmith API key'
+        required: true
+
+jobs:
+  deploy:
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      -
+        name: Create build commit
+        run: |
+          github_sha_hash=${{ github.sha }}
+          github_sha_short="${github_sha_hash:0:7}"
+
+          echo "GitHub commit hash: ${github_sha_short}"
+          echo "COMMIT_HASH=${github_sha_short}" >> $GITHUB_ENV
+      
+      - name: Add Kubeconfig
+        run: |
+          mkdir /home/runner/.kube
+          touch /home/runner/.kube/config
+          echo "${{ secrets.kubeconfig }}" > /home/runner/.kube/config
+
+      - name: Deploy Chart
+        run: |
+          REPO_NAME=${GITHUB_REPOSITORY##*/}
+          REPO_NAME="${REPO_NAME//_/-}"
+          helm upgrade --install --set fullnameOverride=$REPO_NAME --set serviceAccount.name=$REPO_NAME --set image.repository=${{ secrets.dockerhub_username }}/$REPO_NAME:$COMMIT_HASH --set-json='imagePullSecrets=[{"name": "${{ secrets.secret_name }}"}]' --set-json='env_variables=[{"name": "RAILS_ENV", "value": "${{ secrets.rails_env }}"}, {"name": "RAILS_MASTER_KEY", "value": "${{ secrets.rails_master_key }}"}, {"name": "POSTGRES_PORT", "value": "${{ secrets.postgres_port }}"}, {"name": "POSTGRES_DB", "value": "${{ secrets.postgres_db }}"}, {"name": "POSTGRES_HOST", "value": "${{ secrets.postgres_host }}"}, {"name": "POSTGRES_USER", "value": "${{ secrets.postgres_user }}"}, {"name": "POSTGRES_PASSWORD", "value": "${{ secrets.postgres_password }}"}, {"name": "PLANT_COACH_WEATHER_API_BASE_URL", "value": "${{ secrets.plant_coach_weather_api_base_url }}"}]' $REPO_NAME ${{ secrets.helm_chart }} \
+          --namespace ${{ secrets.k8s_environment }} \
+          --kube-context "$KUBE_CONTEXT" \
+          --username ${{ secrets.cloudsmith_username }} \
+          --password ${{ secrets.cloudsmith_api_key }}
