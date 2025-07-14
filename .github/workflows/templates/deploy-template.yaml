@@ -1,5 +1,5 @@
-# Template for using the reusable Deploy workflow
-# This shows how to call the deploy.yaml reusable workflow
+# Template for using the reusable deploy.yaml workflow
+# Copy this file and customize for your project
 
 name: Deploy Application
 
@@ -29,6 +29,7 @@ jobs:
     uses: ./.github/workflows/deploy.yaml
     with:
       environment: ${{ github.event.inputs.environment || 'production' }}
+    # Note: Permissions are inherited from the reusable workflow (contents: write)
     secrets:
       kubeconfig: ${{ secrets.KUBECONFIG }}
       dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -40,7 +41,6 @@ jobs:
       postgres_host: ${{ secrets.POSTGRES_HOST }}
       postgres_user: ${{ secrets.POSTGRES_USER }}
       postgres_password: ${{ secrets.POSTGRES_PASSWORD }}
-      plant_coach_weather_api_base_url: ${{ secrets.PLANT_COACH_WEATHER_API_BASE_URL }}
       helm_chart: ${{ secrets.HELM_CHART }}
       k8s_environment: ${{ secrets.K8S_ENVIRONMENT }}
       cloudsmith_username: ${{ secrets.CLOUDSMITH_USERNAME }}
@@ -54,7 +54,7 @@ jobs:
 #       environment: production
 #     secrets: inherit
 
-# Example: Deploy to multiple environments
+# Example: Deploy to multiple environments sequentially
 # jobs:
 #   deploy-staging:
 #     uses: ./.github/workflows/deploy.yaml
@@ -68,3 +68,71 @@ jobs:
 #     with:
 #       environment: production
 #     secrets: inherit
+
+# Example: Deploy only on successful build
+# on:
+#   workflow_run:
+#     workflows: ["Build and Push"]
+#     types: [completed]
+#     branches: [main]
+#
+# jobs:
+#   deploy:
+#     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+#     uses: ./.github/workflows/deploy.yaml
+#     with:
+#       environment: production
+#     secrets: inherit
+
+# What this reusable workflow does:
+# 1. Checks out code with full history
+# 2. Extracts commit hash (7 characters)
+# 3. Sets up Kubernetes config from secret
+# 4. Deploys Helm chart with:
+#    - Repository name as fullnameOverride and serviceAccount.name
+#    - Docker image: dockerhub_username/repo-name:commit-hash
+#    - Image pull secrets for private registries
+#    - Environment variables for Rails app
+#    - PostgreSQL connection details
+
+# Permissions:
+# The reusable workflow has 'contents: write' permission, which is automatically
+# inherited by the calling workflow. You don't need to specify permissions
+# in the calling workflow unless you need additional permissions.
+
+# Required GitHub Secrets:
+# Kubernetes:
+# - KUBECONFIG: Base64 encoded kubeconfig file content
+# - SECRET_NAME: Name of the image pull secret in Kubernetes
+# - K8S_ENVIRONMENT: Kubernetes namespace to deploy to
+#
+# Docker Hub:
+# - DOCKERHUB_USERNAME: Your DockerHub username (for image reference)
+#
+# Rails Application:
+# - RAILS_ENV: Rails environment (production, staging, etc.)
+# - RAILS_MASTER_KEY: Rails master key for encrypted credentials
+#
+# PostgreSQL Database:
+# - POSTGRES_PORT: Database port (usually 5432)
+# - POSTGRES_DB: Database name
+# - POSTGRES_HOST: Database host/endpoint
+# - POSTGRES_USER: Database username
+# - POSTGRES_PASSWORD: Database password
+#
+#
+# Helm/Chart Repository:
+# - HELM_CHART: Helm chart reference (e.g., repo/chart-name)
+# - CLOUDSMITH_USERNAME: Cloudsmith repository username
+# - CLOUDSMITH_API_KEY: Cloudsmith API key for chart repository access
+
+# Environment Setup:
+# 1. Set up GitHub environments (production, staging, etc.) in repository settings
+# 2. Configure environment protection rules and approvals as needed
+# 3. Environment-specific secrets can be set per environment
+#
+# Prerequisites:
+# - Kubernetes cluster with appropriate permissions
+# - Helm chart repository (e.g., Cloudsmith)
+# - Docker registry access (DockerHub)
+# - Rails application with proper configuration

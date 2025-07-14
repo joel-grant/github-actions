@@ -1,0 +1,76 @@
+# Template for using the reusable build-push.yaml workflow
+# Copy this file and customize for your project
+
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches: 
+      - main
+  # Optional: Allow manual builds
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    uses: ./.github/workflows/build-push.yaml
+    secrets:
+      dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
+      dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+
+# Alternative: Using secrets: inherit (simpler but passes ALL secrets)
+# jobs:
+#   build-and-push:
+#     uses: ./.github/workflows/build-push.yaml
+#     secrets: inherit
+
+# Example: Build on multiple branches but only push on main
+# on:
+#   push:
+#     branches: [ main, develop ]
+#   pull_request:
+#     branches: [ main ]
+#   workflow_dispatch:
+#
+# jobs:
+#   build-and-push:
+#     # Only push to registry on main branch, not PRs
+#     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+#     uses: ./.github/workflows/build-push.yaml
+#     secrets: inherit
+
+# Example: Build for multiple repositories
+# jobs:
+#   build-api:
+#     uses: ./.github/workflows/build-push.yaml
+#     secrets:
+#       dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
+#       dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+#   
+#   build-frontend:
+#     uses: ./.github/workflows/build-push.yaml
+#     secrets:
+#       dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
+#       dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+
+# What this reusable workflow does:
+# 1. Extracts repo name and converts underscores to hyphens
+# 2. Gets commit hash (7 characters)
+# 3. Logs into DockerHub
+# 4. Sets up QEMU and Docker Buildx for multi-platform builds
+# 5. Builds and pushes two tags:
+#    - username/repo-name:commit-hash
+#    - username/repo-name:latest
+
+# Required GitHub Secrets:
+# - DOCKERHUB_USERNAME: Your DockerHub username
+# - DOCKERHUB_TOKEN: Your DockerHub access token (not password!)
+#
+# To create a DockerHub token:
+# 1. Go to https://hub.docker.com/settings/security
+# 2. Click "New Access Token"
+# 3. Give it a name and select appropriate permissions
+# 4. Copy the token and add it to your GitHub repository secrets
+
+# Repository Requirements:
+# - Must have a Dockerfile in the root directory
+# - Repository name will be used as the Docker image name (with underscores converted to hyphens)
