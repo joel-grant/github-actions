@@ -36,11 +36,6 @@ on:
         required: false
         type: string
         default: 'password'
-      setup_ruby_version:
-        description: 'Setup Ruby action version'
-        required: false
-        type: string
-        default: 'v1.234.0'
       skip_rubocop:
         description: 'Skip RuboCop linting'
         required: false
