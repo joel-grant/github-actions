@@ -21,6 +21,9 @@ on:
       kubeconfig:
         description: 'Kubernetes config'
         required: true
+      kube_context:
+        description: 'Kubernetes context to use'
+        required: true
       dockerhub_username:
         description: 'DockerHub username'
         required: true
