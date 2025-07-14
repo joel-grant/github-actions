@@ -1,0 +1,59 @@
+# Template for using the reusable Rails Test and Lint workflow
+# Copy this file and customize the inputs and secrets for your project
+
+name: Rails Test and Lint
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-and-lint:
+    uses: ./.github/workflows/reusable_workflows/test-lint-rails.yaml
+    with:
+      # Required inputs
+      repo_name: "your-repo-name"  # Replace with your actual repository name for RubyCritic URLs
+      
+      # Optional inputs with their default values (customize as needed)
+      ruby_version: ".ruby-version"  # Use .ruby-version file or specify version like "3.2.0"
+      rails_env: "test"
+      postgres_version: "14.12-alpine"
+      postgres_db: "rails_test"
+      postgres_user: "rails"
+      postgres_password: "password"
+      setup_ruby_version: "v1.234.0"
+      skip_rubocop: true  # Set to false to enable RuboCop linting
+      
+    secrets:
+      # Required secrets
+      dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
+      dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      # Optional secrets
+
+# Example with minimal configuration (using mostly defaults):
+# jobs:
+#   test-and-lint:
+#     uses: ./.github/workflows/reusable_workflows/test-lint-rails.yaml
+#     with:
+#       repo_name: "my-rails-app"
+#     secrets:
+#       dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
+#       dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+
+# Example with custom PostgreSQL settings:
+# jobs:
+#   test-and-lint:
+#     uses: ./.github/workflows/reusable_workflows/test-lint-rails.yaml
+#     with:
+#       repo_name: "my-rails-app"
+#       postgres_version: "15-alpine"
+#       postgres_db: "myapp_test"
+#       postgres_user: "myapp"
+#       postgres_password: "secure_password"
+#       skip_rubocop: false
+#     secrets:
+#       dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
+#       dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
