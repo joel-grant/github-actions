@@ -1,4 +1,4 @@
-# 🚀 GitHub Actions CI/CD Pipeline Collection
+# 🚀 Some Reusable GitHub Actions CI/CD Pipelines
 
 Welcome to my personal collection of reusable GitHub Actions workflows! This repository contains a comprehensive set of CI/CD pipelines that I've developed to automate the entire software development lifecycle - from testing and linting to building, deploying, and maintaining applications in production.
 
