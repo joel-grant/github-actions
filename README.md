@@ -52,6 +52,7 @@ jobs:
     secrets: inherit
 ```
 
+
 ## Configuration
 
 Each workflow uses `secrets: inherit` to automatically pass repository secrets. Check the workflow files for available inputs and required secrets.
