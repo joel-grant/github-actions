@@ -35,10 +35,21 @@ The `templates/` directory contains ready-to-use examples showing how to consume
 Copy any template from the `templates/` directory and customize it for your project:
 
 ```yaml
-# Example: .github/workflows/ci.yaml
+# Example: .github/workflows/ci.yaml (Recommended approach)
 name: CI Pipeline
 on: [push, pull_request]
 
+jobs:
+  test:
+    uses: joel-grant/github-actions/.github/workflows/test-lint-rails.yaml@main
+    with:
+      repo_name: "my-awesome-app"
+    secrets: inherit  # Automatically passes all secrets - no explicit mapping needed!
+```
+
+**Alternative (explicit secrets):**
+```yaml
+# Example with explicit secret mapping
 jobs:
   test:
     uses: joel-grant/github-actions/.github/workflows/test-lint-rails.yaml@main
@@ -85,7 +96,19 @@ jobs:
 
 ## 🛠️ Configuration
 
-Each workflow accepts inputs and secrets for maximum flexibility. Check the templates for complete configuration examples, including:
+### Secret Management Options
+
+**Option 1: `secrets: inherit` (Recommended)**
+- Automatically passes all secrets from your repository
+- No need to explicitly map individual secrets
+- Simplest and most maintainable approach
+
+**Option 2: Explicit Secret Mapping**  
+- Explicitly declare which secrets to pass
+- More granular control over secret access
+- Better for security-sensitive environments
+
+Each workflow accepts inputs and secrets for maximum flexibility. Check the `docs/` and `examples/` directories for complete configuration examples, including:
 
 - Database connections and service dependencies
 - Container registry credentials  
