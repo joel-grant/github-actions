@@ -1,0 +1,107 @@
+# Terraform CI/CD Examples
+
+# Basic Terraform CI/CD Pipeline
+name: Terraform CI/CD
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Run terraform plan on pull requests
+  terraform-plan:
+    if: github.event_name == 'pull_request'
+    uses: joel-grant/github-actions/.github/workflows/terraform-plan.yaml@main
+    with:
+      working_directory: './terraform'
+      environment: 'staging'
+    secrets: inherit  # Passes all secrets (AWS, GCP, Azure, etc.)
+
+  # Deploy to production on main branch
+  terraform-deploy:
+    if: github.ref == 'refs/heads/main'
+    uses: joel-grant/github-actions/.github/workflows/terraform-deploy.yaml@main
+    with:
+      working_directory: './terraform'
+      environment: 'production'
+    secrets: inherit
+
+---
+
+# Multi-Environment Terraform Pipeline
+name: Multi-Environment Terraform
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # Plan for staging on PRs to develop
+  plan-staging:
+    if: github.event_name == 'pull_request' && github.base_ref == 'develop'
+    uses: joel-grant/github-actions/.github/workflows/terraform-plan.yaml@main
+    with:
+      working_directory: './infrastructure/staging'
+      environment: 'staging'
+    secrets: inherit
+
+  # Plan for production on PRs to main
+  plan-production:
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    uses: joel-grant/github-actions/.github/workflows/terraform-plan.yaml@main
+    with:
+      working_directory: './infrastructure/production'
+      environment: 'production'
+    secrets: inherit
+
+  # Deploy to staging on develop branch
+  deploy-staging:
+    if: github.ref == 'refs/heads/develop'
+    uses: joel-grant/github-actions/.github/workflows/terraform-deploy.yaml@main
+    with:
+      working_directory: './infrastructure/staging'
+      environment: 'staging'
+    secrets: inherit
+
+  # Deploy to production on main branch
+  deploy-production:
+    if: github.ref == 'refs/heads/main'
+    uses: joel-grant/github-actions/.github/workflows/terraform-deploy.yaml@main
+    with:
+      working_directory: './infrastructure/production'
+      environment: 'production'
+      auto_approve: true
+    secrets: inherit
+
+---
+
+# Terraform with Manual Approval
+name: Terraform with Approval
+on:
+  push:
+    branches: [main]
+
+jobs:
+  terraform-plan:
+    uses: joel-grant/github-actions/.github/workflows/terraform-plan.yaml@main
+    with:
+      working_directory: './terraform'
+    secrets: inherit
+
+  terraform-deploy:
+    needs: terraform-plan
+    uses: joel-grant/github-actions/.github/workflows/terraform-deploy.yaml@main
+    with:
+      working_directory: './terraform'
+      environment: 'production'  # Environment protection rules can require manual approval
+      auto_approve: false
+    secrets: inherit
+
+# NOTE: Provider credentials should be set as repository secrets:
+# - AWS: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION
+# - GCP: GOOGLE_CREDENTIALS (service account JSON)
+# - Azure: ARM_CLIENT_ID, ARM_CLIENT_SECRET, ARM_SUBSCRIPTION_ID, ARM_TENANT_ID
+# - Terraform Cloud: TF_API_TOKEN (team/user API token)
+# - Or use OIDC for provider authentication without long-lived secrets

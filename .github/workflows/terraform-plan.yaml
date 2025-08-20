@@ -1,0 +1,120 @@
+name: Terraform Plan
+
+on:
+  workflow_call:
+    inputs:
+      terraform_version:
+        description: 'Terraform version to use'
+        required: false
+        type: string
+        default: '1.5.7'
+      working_directory:
+        description: 'Directory containing Terraform configuration'
+        required: false
+        type: string
+        default: '.'
+      environment:
+        description: 'Environment name for plan'
+        required: false
+        type: string
+        default: 'default'
+
+jobs:
+  terraform-plan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+          
+      - name: Terraform Format Check
+        id: fmt
+        run: terraform fmt -check -recursive
+        working-directory: ${{ inputs.working_directory }}
+        continue-on-error: true
+        
+      - name: Terraform Init
+        id: init
+        run: terraform init
+        working-directory: ${{ inputs.working_directory }}
+        
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+        working-directory: ${{ inputs.working_directory }}
+        
+      - name: Terraform Plan
+        id: plan
+        run: |
+          # For Terraform Cloud, we don't use -out flag as plans are stored remotely
+          if terraform show -json 2>/dev/null | jq -r '.backend' 2>/dev/null | grep -q 'remote\|cloud' 2>/dev/null; then
+            terraform plan -no-color | tee plan_output.txt
+          else
+            terraform plan -no-color -out=tfplan | tee plan_output.txt
+          fi
+        working-directory: ${{ inputs.working_directory }}
+        continue-on-error: true
+        
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        if: hashFiles(format('{0}/tfplan', inputs.working_directory)) != ''
+        with:
+          name: terraform-plan-${{ inputs.environment }}
+          path: ${{ inputs.working_directory }}/tfplan
+          retention-days: 5
+        
+      - name: Generate Plan Summary
+        id: plan-summary
+        run: |
+          # Use the captured plan output from previous step
+          echo "PLAN_SUMMARY<<EOF" >> $GITHUB_OUTPUT
+          head -100 plan_output.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        working-directory: ${{ inputs.working_directory }}
+        
+      - name: Update Pull Request
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        env:
+          PLAN: "${{ steps.plan.outputs.stdout }}"
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
+            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+            #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
+            <details><summary>Validation Output</summary>
+
+            \`\`\`\n
+            ${{ steps.validate.outputs.stdout }}
+            \`\`\`
+
+            </details>
+
+            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`terraform\n
+            ${{ steps.plan-summary.outputs.PLAN_SUMMARY }}
+            \`\`\`
+
+            </details>
+
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Working Directory: \`${{ inputs.working_directory }}\`, Workflow: \`${{ github.workflow }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
