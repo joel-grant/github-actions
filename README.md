@@ -1,4 +1,4 @@
-# My GitHub Actions Modules for Rails Deployments and Infrastructure
+# My GitHub Actions Modules for Rails Projects
 
 This is my personal collection of reusable GitHub Actions workflows that I use to automate Rails application deployments.
 
