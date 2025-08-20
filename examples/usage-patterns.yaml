@@ -1,0 +1,152 @@
+# Example usage patterns for reusable workflows
+
+# Pattern 1: Using secrets: inherit (RECOMMENDED)
+# This automatically passes ALL secrets from the calling repository
+name: CI/CD with Inherited Secrets
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test-and-lint:
+    uses: joel-grant/github-actions/.github/workflows/test-lint-rails.yaml@main
+    with:
+      repo_name: my-rails-app
+      ruby_version: '3.4.3'
+    secrets: inherit  # No need to explicitly declare secrets!
+
+  build:
+    needs: test-and-lint
+    uses: joel-grant/github-actions/.github/workflows/build-push.yaml@main
+    secrets: inherit  # No need to explicitly declare secrets!
+
+  deploy:
+    needs: build
+    uses: joel-grant/github-actions/.github/workflows/deploy.yaml@main
+    with:
+      environment: production
+    secrets: inherit  # No need to explicitly declare secrets!
+
+---
+
+# Pattern 2: Explicit secrets
+name: CI/CD with Explicit Secrets
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test-and-lint:
+    uses: joel-grant/github-actions/.github/workflows/test-lint-rails.yaml@main
+    with:
+      repo_name: my-rails-app
+    secrets:
+      dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
+      dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  build:
+    needs: test-and-lint
+    uses: joel-grant/github-actions/.github/workflows/build-push.yaml@main
+    secrets:
+      dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
+      dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+
+---
+
+# Pattern 3: Mixed approach (some inherited, some explicit)
+name: CI/CD Mixed Approach
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test-and-lint:
+    uses: joel-grant/github-actions/.github/workflows/test-lint-rails.yaml@main
+    with:
+      repo_name: my-rails-app
+    secrets: inherit
+
+  deploy-staging:
+    uses: joel-grant/github-actions/.github/workflows/deploy.yaml@main
+    with:
+      environment: staging
+    secrets:
+      # Override specific secrets for staging environment
+      kubeconfig: ${{ secrets.STAGING_KUBECONFIG }}
+      kube_context: ${{ secrets.STAGING_CONTEXT }}
+      # All other secrets inherited automatically
+      inherit: true
+
+---
+
+# Pattern 4: Cache Control Examples
+name: Cache Management Examples
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bust_cache:
+        description: 'Force rebuild without cache'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  # Normal build with cache
+  build-cached:
+    uses: joel-grant/github-actions/.github/workflows/build-push.yaml@main
+    secrets: inherit
+
+  # Build without cache (force rebuild)
+  build-no-cache:
+    if: github.event.inputs.bust_cache == 'true' || contains(github.event.head_commit.message, '[no-cache]')
+    uses: joel-grant/github-actions/.github/workflows/build-push.yaml@main
+    with:
+      no_cache: true
+    secrets: inherit
+
+  # Build with cache key suffix (useful for dependency updates)
+  build-with-cache-key:
+    if: contains(github.event.head_commit.message, '[new-deps]')
+    uses: joel-grant/github-actions/.github/workflows/build-push.yaml@main
+    with:
+      cache_key_suffix: "deps-${{ github.run_number }}"
+    secrets: inherit
+
+---
+
+# Pattern 5: Branch-specific cache strategies
+name: Branch-specific Cache Strategy
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-main:
+    if: github.ref == 'refs/heads/main'
+    uses: joel-grant/github-actions/.github/workflows/build-push.yaml@main
+    with:
+      # Main branch uses stable cache
+      cache_key_suffix: "main"
+    secrets: inherit
+
+  build-develop:
+    if: github.ref == 'refs/heads/develop'
+    uses: joel-grant/github-actions/.github/workflows/build-push.yaml@main
+    with:
+      # Develop branch has its own cache scope
+      cache_key_suffix: "develop"
+    secrets: inherit
+
+  build-pr:
+    if: github.event_name == 'pull_request'
+    uses: joel-grant/github-actions/.github/workflows/build-push.yaml@main
+    with:
+      # PRs use ephemeral cache keys
+      cache_key_suffix: "pr-${{ github.event.number }}"
+    secrets: inherit
