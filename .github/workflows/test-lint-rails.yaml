@@ -55,21 +55,22 @@ on:
         required: true
 
 jobs:
-  test:
+  test-with-db:
+    if: ${{ inputs.use_postgresql == true }}
     runs-on: ubuntu-latest
     env:
       RAILS_ENV: test
-      DATABASE_URL: ${{ inputs.database_url != '' && inputs.database_url || (inputs.use_postgresql && format('postgres://{0}:{1}@localhost:5432/{2}', inputs.postgres_user, inputs.postgres_password, inputs.postgres_db) || '') }}
+      DATABASE_URL: ${{ inputs.database_url != '' && inputs.database_url || format('postgres://{0}:{1}@localhost:5432/{2}', inputs.postgres_user, inputs.postgres_password, inputs.postgres_db) }}
     services:
       postgres:
         image: ${{ inputs.use_postgresql && 'postgres:14.12-alpine' || '' }}
         ports:
           - ${{ inputs.use_postgresql && '5432:5432' || '' }}
         env:
-          POSTGRES_DB: ${{ inputs.use_postgresql && inputs.postgres_db || '' }}
-          POSTGRES_USER: ${{ inputs.use_postgresql && inputs.postgres_user || '' }}
-          POSTGRES_PASSWORD: ${{ inputs.use_postgresql && inputs.postgres_password || '' }}
-        options: ${{ inputs.use_postgresql && '--health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5' || '' }}
+          POSTGRES_DB: ${{ inputs.postgres_db }}
+          POSTGRES_USER: ${{ inputs.postgres_user }}
+          POSTGRES_PASSWORD: ${{ inputs.postgres_password }}
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -79,7 +80,33 @@ jobs:
           ruby-version: ${{ inputs.ruby_version }}
           bundler-cache: true
       - name: Set up database schema
-        if: ${{ inputs.use_postgresql || inputs.database_url != '' }}
+        run: |
+          if [ -f "bin/rails" ]; then
+            bin/rails db:schema:load
+          elif [ -f "bin/rake" ]; then
+            bin/rake db:schema:load
+          else
+            bundle exec rails db:schema:load
+          fi
+      - name: Run tests
+        run: bin/rake
+
+  test-no-db:
+    if: ${{ inputs.use_postgresql == false }}
+    runs-on: ubuntu-latest
+    env:
+      RAILS_ENV: test
+      DATABASE_URL: ${{ inputs.database_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install Ruby and gems
+        uses: ruby/setup-ruby@v1.234.0
+        with:
+          ruby-version: ${{ inputs.ruby_version }}
+          bundler-cache: true
+      - name: Set up database schema
+        if: ${{ inputs.database_url != '' }}
         run: |
           if [ -f "bin/rails" ]; then
             bin/rails db:schema:load
