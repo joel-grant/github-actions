@@ -63,9 +63,9 @@ jobs:
       DATABASE_URL: ${{ inputs.database_url != '' && inputs.database_url || format('postgres://{0}:{1}@localhost:5432/{2}', inputs.postgres_user, inputs.postgres_password, inputs.postgres_db) }}
     services:
       postgres:
-        image: postgres:14.12-alpine
+        image: ${{ inputs.use_postgresql && 'postgres:14.12-alpine' || '' }}
         ports:
-          - "5432:5432"
+          - ${{ inputs.use_postgresql && '5432:5432' || '' }}
         env:
           POSTGRES_DB: ${{ inputs.postgres_db }}
           POSTGRES_USER: ${{ inputs.postgres_user }}
