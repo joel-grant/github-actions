@@ -1,0 +1,183 @@
+name: Helm Publish
+
+on:
+  workflow_call:
+    inputs:
+      helm_version:
+        description: 'Helm version to use'
+        required: false
+        type: string
+        default: '3.15.4'
+      chart_directory:
+        description: 'Directory containing the Helm chart'
+        required: false
+        type: string
+        default: './chart'
+      registry_type:
+        description: 'Registry type: oci, chartmuseum, cloudsmith, or artifactory'
+        required: false
+        type: string
+        default: 'oci'
+      registry_url:
+        description: 'Registry URL (e.g., oci://registry-1.docker.io/myorg or https://myorg.cloudsmith.io/charts/)'
+        required: true
+        type: string
+      chart_version:
+        description: 'Override chart version (leave empty to use Chart.yaml version)'
+        required: false
+        type: string
+      app_version:
+        description: 'Override app version (leave empty to use Chart.yaml appVersion)'
+        required: false
+        type: string
+    secrets:
+      registry_username:
+        description: 'Registry username'
+        required: false
+      registry_password:
+        description: 'Registry password/token'
+        required: false
+      cloudsmith_api_key:
+        description: 'Cloudsmith API key (if using Cloudsmith)'
+        required: false
+
+jobs:
+  helm-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ inputs.helm_version }}
+          
+      - name: Add Helm Repositories
+        run: |
+          # Add common repositories for dependencies
+          helm repo add bitnami https://charts.bitnami.com/bitnami || true
+          helm repo add stable https://charts.helm.sh/stable || true
+          helm repo update
+        continue-on-error: true
+        
+      - name: Helm Dependencies
+        run: |
+          if [ -f "Chart.yaml" ] || [ -f "Chart.yml" ]; then
+            helm dependency update
+          fi
+        working-directory: ${{ inputs.chart_directory }}
+        
+      - name: Update Chart Version
+        if: ${{ inputs.chart_version != '' || inputs.app_version != '' }}
+        run: |
+          if [ "${{ inputs.chart_version }}" != "" ]; then
+            sed -i "s/^version:.*/version: ${{ inputs.chart_version }}/" Chart.yaml
+            echo "Updated chart version to ${{ inputs.chart_version }}"
+          fi
+          if [ "${{ inputs.app_version }}" != "" ]; then
+            sed -i "s/^appVersion:.*/appVersion: ${{ inputs.app_version }}/" Chart.yaml
+            echo "Updated app version to ${{ inputs.app_version }}"
+          fi
+        working-directory: ${{ inputs.chart_directory }}
+        
+      - name: Package Chart
+        id: package
+        run: |
+          helm package . --destination ../
+          CHART_FILE=$(ls ../*.tgz)
+          echo "CHART_FILE=${CHART_FILE}" >> $GITHUB_OUTPUT
+          echo "Packaged chart: ${CHART_FILE}"
+        working-directory: ${{ inputs.chart_directory }}
+        
+      - name: Publish to OCI Registry
+        if: ${{ inputs.registry_type == 'oci' }}
+        run: |
+          echo "Publishing to OCI registry: ${{ inputs.registry_url }}"
+          
+          # Login to OCI registry
+          if [ "${{ secrets.registry_username }}" != "" ] && [ "${{ secrets.registry_password }}" != "" ]; then
+            echo "${{ secrets.registry_password }}" | helm registry login ${{ inputs.registry_url }} \
+              --username "${{ secrets.registry_username }}" --password-stdin
+          fi
+          
+          # Push chart
+          helm push ${{ steps.package.outputs.CHART_FILE }} ${{ inputs.registry_url }}
+          
+      - name: Publish to ChartMuseum
+        if: ${{ inputs.registry_type == 'chartmuseum' }}
+        run: |
+          echo "Publishing to ChartMuseum: ${{ inputs.registry_url }}"
+          
+          # Install helm-push plugin if not exists
+          helm plugin list | grep -q push || helm plugin install https://github.com/chartmuseum/helm-push
+          
+          # Add repository
+          if [ "${{ secrets.registry_username }}" != "" ] && [ "${{ secrets.registry_password }}" != "" ]; then
+            helm repo add chartmuseum ${{ inputs.registry_url }} \
+              --username "${{ secrets.registry_username }}" \
+              --password "${{ secrets.registry_password }}"
+          else
+            helm repo add chartmuseum ${{ inputs.registry_url }}
+          fi
+          
+          # Push chart
+          helm cm-push ${{ steps.package.outputs.CHART_FILE }} chartmuseum
+          
+      - name: Publish to Cloudsmith
+        if: ${{ inputs.registry_type == 'cloudsmith' }}
+        run: |
+          echo "Publishing to Cloudsmith: ${{ inputs.registry_url }}"
+          
+          # Install cloudsmith-cli
+          pip install cloudsmith-cli
+          
+          # Extract org/repo from URL (format: https://dl.cloudsmith.io/public/org/repo/)
+          CLOUDSMITH_ORG=$(echo "${{ inputs.registry_url }}" | sed -n 's|.*cloudsmith\.io/[^/]*/\([^/]*\)/.*|\1|p')
+          CLOUDSMITH_REPO=$(echo "${{ inputs.registry_url }}" | sed -n 's|.*cloudsmith\.io/[^/]*/[^/]*/\([^/]*\).*|\1|p')
+          
+          # Upload chart
+          cloudsmith push helm ${CLOUDSMITH_ORG}/${CLOUDSMITH_REPO} ${{ steps.package.outputs.CHART_FILE }} \
+            --api-key "${{ secrets.cloudsmith_api_key }}"
+            
+      - name: Publish to Artifactory
+        if: ${{ inputs.registry_type == 'artifactory' }}
+        run: |
+          echo "Publishing to Artifactory: ${{ inputs.registry_url }}"
+          
+          # Upload using curl
+          curl -u "${{ secrets.registry_username }}:${{ secrets.registry_password }}" \
+            -T ${{ steps.package.outputs.CHART_FILE }} \
+            "${{ inputs.registry_url }}/$(basename ${{ steps.package.outputs.CHART_FILE }})"
+            
+      - name: Extract Chart Info
+        id: chart-info
+        run: |
+          CHART_NAME=$(helm show chart ${{ steps.package.outputs.CHART_FILE }} | grep '^name:' | cut -d' ' -f2)
+          CHART_VERSION=$(helm show chart ${{ steps.package.outputs.CHART_FILE }} | grep '^version:' | cut -d' ' -f2)
+          APP_VERSION=$(helm show chart ${{ steps.package.outputs.CHART_FILE }} | grep '^appVersion:' | cut -d' ' -f2)
+          
+          echo "CHART_NAME=${CHART_NAME}" >> $GITHUB_OUTPUT
+          echo "CHART_VERSION=${CHART_VERSION}" >> $GITHUB_OUTPUT  
+          echo "APP_VERSION=${APP_VERSION}" >> $GITHUB_OUTPUT
+          
+      - name: Upload Chart Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: helm-chart-${{ steps.chart-info.outputs.CHART_NAME }}-${{ steps.chart-info.outputs.CHART_VERSION }}
+          path: ${{ steps.package.outputs.CHART_FILE }}
+          retention-days: 30
+          
+      - name: Publication Summary
+        run: |
+          echo "## Helm Chart Publication Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Chart Name:** ${{ steps.chart-info.outputs.CHART_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Chart Version:** ${{ steps.chart-info.outputs.CHART_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **App Version:** ${{ steps.chart-info.outputs.APP_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Registry Type:** ${{ inputs.registry_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Registry URL:** ${{ inputs.registry_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ✅ Published successfully" >> $GITHUB_STEP_SUMMARY

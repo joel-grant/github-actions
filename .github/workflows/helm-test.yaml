@@ -1,0 +1,154 @@
+name: Helm Test
+
+on:
+  workflow_call:
+    inputs:
+      helm_version:
+        description: 'Helm version to use'
+        required: false
+        type: string
+        default: '3.15.4'
+      chart_directory:
+        description: 'Directory containing the Helm chart'
+        required: false
+        type: string
+        default: './chart'
+      kubernetes_version:
+        description: 'Kubernetes version for testing'
+        required: false
+        type: string
+        default: '1.30.0'
+      test_values:
+        description: 'Comma-separated list of values files to test'
+        required: false
+        type: string
+        default: 'values.yaml'
+      skip_lint:
+        description: 'Skip helm lint'
+        required: false
+        type: boolean
+        default: false
+      skip_template_test:
+        description: 'Skip template rendering test'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  helm-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ inputs.helm_version }}
+          
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: ${{ inputs.kubernetes_version }}
+          
+      - name: Add Helm Repositories
+        run: |
+          # Add common repositories
+          helm repo add bitnami https://charts.bitnami.com/bitnami || true
+          helm repo add stable https://charts.helm.sh/stable || true
+          helm repo update
+        continue-on-error: true
+        
+      - name: Helm Dependencies
+        run: |
+          if [ -f "Chart.yaml" ] || [ -f "Chart.yml" ]; then
+            helm dependency update
+          fi
+        working-directory: ${{ inputs.chart_directory }}
+        
+      - name: Helm Lint
+        if: ${{ !inputs.skip_lint }}
+        run: |
+          echo "## Helm Lint Results" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          helm lint . | tee -a $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        working-directory: ${{ inputs.chart_directory }}
+        
+      - name: Template Rendering Test
+        if: ${{ !inputs.skip_template_test }}
+        run: |
+          echo "## Template Rendering Test" >> $GITHUB_STEP_SUMMARY
+          IFS=',' read -ra VALUES_FILES <<< "${{ inputs.test_values }}"
+          
+          for values_file in "${VALUES_FILES[@]}"; do
+            values_file=$(echo "$values_file" | xargs)  # trim whitespace
+            if [ -f "$values_file" ]; then
+              echo "### Testing with $values_file" >> $GITHUB_STEP_SUMMARY
+              echo "Testing template rendering with $values_file"
+              
+              # Test template rendering
+              helm template test-release . -f "$values_file" > /dev/null
+              if [ $? -eq 0 ]; then
+                echo "✅ Template rendering successful with $values_file" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "❌ Template rendering failed with $values_file" >> $GITHUB_STEP_SUMMARY
+                exit 1
+              fi
+            else
+              echo "⚠️ Values file $values_file not found" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+        working-directory: ${{ inputs.chart_directory }}
+        
+      - name: Dry Run Test
+        run: |
+          echo "## Dry Run Test" >> $GITHUB_STEP_SUMMARY
+          
+          # Create a temporary kubeconfig for dry-run testing
+          mkdir -p ~/.kube
+          cat > ~/.kube/config <<EOF
+          apiVersion: v1
+          kind: Config
+          clusters:
+          - cluster:
+              server: https://kubernetes.default.svc
+              insecure-skip-tls-verify: true
+            name: test-cluster
+          contexts:
+          - context:
+              cluster: test-cluster
+              user: test-user
+            name: test-context
+          current-context: test-context
+          users:
+          - name: test-user
+            user: {}
+          EOF
+          
+          # Test dry-run installation
+          IFS=',' read -ra VALUES_FILES <<< "${{ inputs.test_values }}"
+          for values_file in "${VALUES_FILES[@]}"; do
+            values_file=$(echo "$values_file" | xargs)
+            if [ -f "$values_file" ]; then
+              echo "Testing dry-run installation with $values_file"
+              helm install test-release . -f "$values_file" --dry-run --debug > /dev/null 2>&1
+              if [ $? -eq 0 ]; then
+                echo "✅ Dry-run successful with $values_file" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "❌ Dry-run failed with $values_file" >> $GITHUB_STEP_SUMMARY
+              fi
+            fi
+          done
+        working-directory: ${{ inputs.chart_directory }}
+        
+      - name: Chart Validation Summary
+        run: |
+          echo "## Chart Validation Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- **Chart Directory:** ${{ inputs.chart_directory }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Helm Version:** ${{ inputs.helm_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Kubernetes Version:** ${{ inputs.kubernetes_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Values Files Tested:** ${{ inputs.test_values }}" >> $GITHUB_STEP_SUMMARY

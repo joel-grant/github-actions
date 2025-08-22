@@ -1,0 +1,148 @@
+# Helm Chart CI/CD Examples
+
+# Basic Helm Chart CI/CD Pipeline
+name: Helm Chart CI/CD
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Test helm chart on pull requests
+  helm-test:
+    uses: joel-grant/github-actions/.github/workflows/helm-test.yaml@main
+    with:
+      chart_directory: './helm-chart'
+      test_values: 'values.yaml,values-dev.yaml,values-prod.yaml'
+
+  # Publish to registry on main branch
+  helm-publish:
+    if: github.ref == 'refs/heads/main'
+    needs: helm-test
+    uses: joel-grant/github-actions/.github/workflows/helm-publish.yaml@main
+    with:
+      chart_directory: './helm-chart'
+      registry_type: 'cloudsmith'
+      registry_url: 'https://dl.cloudsmith.io/public/myorg/helm-charts/'
+    secrets: inherit
+
+---
+
+# Multi-Registry Helm Publishing
+name: Multi-Registry Helm Publishing
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  helm-test:
+    uses: joel-grant/github-actions/.github/workflows/helm-test.yaml@main
+    with:
+      chart_directory: './chart'
+
+  # Publish to Docker Hub OCI registry
+  publish-dockerhub:
+    needs: helm-test
+    uses: joel-grant/github-actions/.github/workflows/helm-publish.yaml@main
+    with:
+      chart_directory: './chart'
+      registry_type: 'oci'
+      registry_url: 'oci://registry-1.docker.io/myorg'
+      chart_version: ${{ github.ref_name }}
+    secrets: inherit
+
+  # Publish to Cloudsmith
+  publish-cloudsmith:
+    needs: helm-test
+    uses: joel-grant/github-actions/.github/workflows/helm-publish.yaml@main
+    with:
+      chart_directory: './chart'
+      registry_type: 'cloudsmith'
+      registry_url: 'https://dl.cloudsmith.io/public/myorg/helm-charts/'
+      chart_version: ${{ github.ref_name }}
+    secrets: inherit
+
+  # Publish to GitHub Container Registry
+  publish-ghcr:
+    needs: helm-test
+    uses: joel-grant/github-actions/.github/workflows/helm-publish.yaml@main
+    with:
+      chart_directory: './chart'
+      registry_type: 'oci'
+      registry_url: 'oci://ghcr.io/${{ github.repository_owner }}'
+      chart_version: ${{ github.ref_name }}
+    secrets: inherit
+
+---
+
+# Helm Chart Testing with Multiple Kubernetes Versions
+name: Comprehensive Helm Testing
+on:
+  pull_request:
+    paths: ['chart/**']
+
+jobs:
+  test-k8s-versions:
+    strategy:
+      matrix:
+        k8s_version: ['1.28.0', '1.29.0', '1.30.0']
+    uses: joel-grant/github-actions/.github/workflows/helm-test.yaml@main
+    with:
+      chart_directory: './chart'
+      kubernetes_version: ${{ matrix.k8s_version }}
+      test_values: 'values.yaml,values-staging.yaml,values-production.yaml'
+
+---
+
+# Environment-Specific Helm Deployments
+name: Environment Helm Deployments
+on:
+  push:
+    branches: [main, develop]
+
+jobs:
+  helm-test:
+    uses: joel-grant/github-actions/.github/workflows/helm-test.yaml@main
+    with:
+      chart_directory: './chart'
+
+  # Publish development version
+  publish-dev:
+    if: github.ref == 'refs/heads/develop'
+    needs: helm-test
+    uses: joel-grant/github-actions/.github/workflows/helm-publish.yaml@main
+    with:
+      chart_directory: './chart'
+      registry_type: 'cloudsmith'
+      registry_url: 'https://dl.cloudsmith.io/public/myorg/helm-dev/'
+      chart_version: 'dev-${{ github.run_number }}'
+    secrets: inherit
+
+  # Publish production version
+  publish-prod:
+    if: github.ref == 'refs/heads/main'
+    needs: helm-test
+    uses: joel-grant/github-actions/.github/workflows/helm-publish.yaml@main
+    with:
+      chart_directory: './chart'
+      registry_type: 'cloudsmith'
+      registry_url: 'https://dl.cloudsmith.io/public/myorg/helm-charts/'
+    secrets: inherit
+
+# Required repository secrets for different registries:
+# 
+# Cloudsmith:
+# - CLOUDSMITH_API_KEY: Your Cloudsmith API key
+#
+# OCI Registries (Docker Hub, GHCR, etc.):
+# - REGISTRY_USERNAME: Username for the registry
+# - REGISTRY_PASSWORD: Password/token for the registry
+#
+# ChartMuseum:
+# - REGISTRY_USERNAME: Username for ChartMuseum
+# - REGISTRY_PASSWORD: Password for ChartMuseum
+#
+# Artifactory:
+# - REGISTRY_USERNAME: Artifactory username
+# - REGISTRY_PASSWORD: Artifactory password/API key
