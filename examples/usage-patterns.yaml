@@ -13,6 +13,7 @@ jobs:
     with:
       repo_name: my-rails-app
       ruby_version: '3.4.3'
+      use_postgresql: true  # Default, can be omitted
     secrets: inherit  # No need to explicitly declare secrets!
 
   build:
@@ -105,4 +106,51 @@ jobs:
     uses: joel-grant/github-actions/.github/workflows/build-push.yaml@main
     with:
       no_cache: true
+    secrets: inherit
+
+---
+
+# Pattern 5: Rails Applications with Different Database Configurations
+name: Rails Database Configurations
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  # Rails app without database (API-only, background jobs, etc.)
+  test-no-database:
+    uses: joel-grant/github-actions/.github/workflows/test-lint-rails.yaml@main
+    with:
+      repo_name: my-api-app
+      use_postgresql: false
+    secrets: inherit
+
+  # Rails app with PostgreSQL (default)
+  test-with-postgresql:
+    uses: joel-grant/github-actions/.github/workflows/test-lint-rails.yaml@main
+    with:
+      repo_name: my-web-app
+      use_postgresql: true
+      postgres_db: 'my_app_test'
+      postgres_user: 'postgres'
+      postgres_password: 'secret'
+    secrets: inherit
+
+  # Rails app with custom database URL (MySQL, SQLite, etc.)
+  test-with-custom-db:
+    uses: joel-grant/github-actions/.github/workflows/test-lint-rails.yaml@main
+    with:
+      repo_name: my-custom-app
+      use_postgresql: false
+      database_url: 'mysql2://user:password@localhost:3306/test_db'
+    secrets: inherit
+
+  # Rails app with external database service
+  test-with-external-db:
+    uses: joel-grant/github-actions/.github/workflows/test-lint-rails.yaml@main
+    with:
+      repo_name: my-cloud-app
+      use_postgresql: false
+      database_url: 'postgres://user:pass@external-db.example.com:5432/testdb'
     secrets: inherit
