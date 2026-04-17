@@ -21,100 +21,146 @@
 
 ---
 
-## 1) Platform and Team Foundations
+## 1) Define Service Boundaries, Principles, and Ownership
 
-Mature teams treat CI/CD as a product. Define clear ownership, service level objectives, escalation paths, and operational playbooks.
+Start by making delivery architecture explicit: service boundaries, dependency maps, and accountable owners.
 
-- Environment strategy: ephemeral preview, staging, production with strict promotion flow
-- Team model: platform engineering + service teams with explicit responsibilities
-- Reliability model: SLOs, error budgets, incident response, postmortems
-- Operational readiness: runbooks for deploy, rollback, secret rotation, and incident response
+- Define bounded contexts and ownership per Rails service/component
+- Document architecture principles (security by default, least privilege, immutable artifacts)
+- Assign primary/secondary owners and on-call rotations
+- Maintain service catalogs with dependencies, criticality tiers, and escalation routes
 
-## 2) Source Control and Change Management
+## 2) Design Environment Topology and Promotion Contracts
 
-Repository controls prevent unsafe changes from reaching production.
+A mature team builds predictable promotion paths across environments.
 
-- Branch protection with required status checks and no force pushes
-- CODEOWNERS enforcing domain review for workflows, infrastructure, and security-sensitive files
-- Signed commits/tags and protected release branches
-- Pull request templates covering risk, rollout, rollback, and security impact
+- Standardize preview, staging, and production with environment-specific controls
+- Define immutable promotion contracts (artifact digest + config version + migration status)
+- Align data handling rules per environment (masked fixtures, synthetic datasets, seeded tenants)
+- Enforce promotion-only forward flow with exceptions logged and approved
 
-## 3) CI Quality Gates (Fast + Strict)
+## 3) Establish Repository Governance
 
-A mature Rails pipeline optimizes for speed and confidence.
+Repository controls are the first line of CI/CD risk reduction.
 
-- Parallelized test strategy: unit, integration, system, and contract tests
-- Static analysis: RuboCop, Brakeman, bundler-audit, secret scanning
-- Database migration safety checks and backward compatibility verification
-- Coverage thresholds and flaky-test quarantine with automatic reporting
-- Build cancellation for superseded commits to reduce queue time
+- Require branch protection, merge queue/status checks, and linear history rules
+- Use CODEOWNERS for workflows, deployment manifests, and security-critical paths
+- Enforce signed commits/tags and protected release/tag patterns
+- Use PR templates for risk scoring, rollback plan, and security impact review
 
-## 4) Build, Supply Chain, and Artifact Integrity
+## 4) Standardize Workflow Architecture in GitHub Actions
 
-Artifact trust is central to mature DevSecOps.
+Treat pipelines like production software: reusable, observable, and policy-driven.
 
-- Deterministic Docker builds for Rails app images
-- Minimal hardened base images and non-root containers
-- SBOM generation and vulnerability scanning as release gates
-- Image signing and provenance attestations (SLSA-oriented controls)
-- Promotion by digest (not mutable tags) across environments
+- Use reusable workflow modules for build, test, security, and deploy stages
+- Define runner strategy (hosted/self-hosted) with isolation and concurrency safeguards
+- Implement cache strategy for Bundler, Docker layers, and test artifacts
+- Control workflow fan-out/fan-in with explicit dependencies and cancellation policies
 
-## 5) Secrets, Identity, and Access
+## 5) Implement Dependency and Secret Hygiene Gates
 
-Use identity-based, short-lived authentication everywhere.
+Before deep CI stages, block known risky inputs.
 
-- GitHub Actions OIDC federation to cloud resources
-- External secret manager integration for runtime secrets
-- Strict RBAC for CI runners, registry, and Kubernetes service accounts
-- Secret rotation automation and drift detection
-- Prevent secret exfiltration via log redaction and egress controls
+- Gate on dependency risk (bundler-audit/SCA) and lockfile drift
+- Scan code and history for leaked credentials/tokens
+- Enforce dependency pinning/version constraints for deterministic builds
+- Validate secrets usage patterns and deny plain-text secret references in workflows
 
-## 6) Continuous Delivery to DOKS
+## 6) Build Fast CI Validation Stages
 
-Deployment maturity is measured by safe velocity.
+High maturity combines speed with broad defect detection.
 
-- GitOps or controlled deployment workflow with auditable promotion
-- Progressive delivery (canary/blue-green) with health and SLO-based gates
-- Automated rollback on failed smoke checks, SLO burn, or error spikes
-- Helm chart version discipline and schema validation
-- Deployment freeze windows and manual approval gates for high-risk releases
+- Parallelize lint, unit, integration, and system tests for Rails
+- Run schema and migration safety checks with backward compatibility rules
+- Test critical integrations (database, cache, queue, external APIs) with contract checks
+- Fail fast on deterministic errors; quarantine and track non-deterministic flakiness
 
-## 7) Kubernetes Runtime Security and Policy
+## 7) Enforce Quality and Security Release Criteria
 
-Cluster and workload hardening are mandatory for mature teams.
+Promotion must be policy-based, not opinion-based.
 
-- Pod Security standards enforcement and restricted defaults
-- NetworkPolicies isolating namespaces and critical services
-- Admission controls (OPA/Gatekeeper or Kyverno) for policy-as-code
-- Resource quotas, limits, and autoscaling tuned with production telemetry
-- Runtime threat detection and audit logging retention
+- Require quality thresholds (coverage floors, test pass rate, performance budgets)
+- Run SAST and misconfiguration analysis as mandatory status checks
+- Enforce policy checks for IaC/Kubernetes manifests before deploy eligibility
+- Block release if required attestations/scans are missing or stale
 
-## 8) Observability, Verification, and Feedback Loops
+## 8) Build Hardened, Reproducible Artifacts
 
-Every release should be observable and verifiable.
+The same source should always produce verifiable, minimal-risk artifacts.
 
-- Centralized structured logs with correlation IDs
-- Metrics and tracing for app, database, queue, and cluster layers
-- Deployment annotations tied to dashboards and alerts
-- Automated post-deploy verification (synthetics + key user journeys)
-- DORA metrics and operational KPIs tracked per team and service
+- Use deterministic Docker builds and pinned base image digests
+- Build non-root containers with minimal packages and reduced attack surface
+- Attach metadata (git SHA, build timestamp, dependency snapshot) to artifacts
+- Promote immutable artifacts by digest only across all environments
 
-## 9) Resilience and Disaster Recovery
+## 9) Establish Software Supply Chain Trust
 
-High maturity includes regular proof of recoverability.
+Prove where software came from and what it contains.
 
-- Backup and restore automation for databases and critical state
-- Recovery Time Objective (RTO) and Recovery Point Objective (RPO) targets tested
-- Failure injection and game-day exercises
-- Multi-zone and dependency failure planning
-- Versioned rollback playbooks tested under load
+- Generate SBOMs for every build and store with artifact records
+- Scan images/packages and enforce severity/risk-based deployment gates
+- Sign container images and provenance attestations
+- Retain traceable chain-of-custody from commit to running workload
 
-## 10) Continuous DevSecOps Governance
+## 10) Implement Workload Identity and Secrets Architecture
 
-Security is continuous, not a one-time gate.
+Replace static credentials with identity-based, short-lived access.
 
-- Risk-based vulnerability triage with defined remediation SLAs
-- Dependency update automation with staged rollout
-- Compliance evidence automatically collected from pipeline and cluster events
-- Quarterly threat modeling and control validation
-- Executive reporting on security posture, release risk, and reliability outcomes
+- Use GitHub OIDC federation to cloud APIs and registry access
+- Pull runtime secrets from managed secret stores (not repo variables)
+- Apply strict RBAC for CI runners, namespaces, and service accounts
+- Rotate secrets automatically and detect drift in permissions/policies
+
+## 11) Define Deployment Control Plane
+
+Create a clear mechanism that governs how changes reach DOKS.
+
+- Use GitOps or controlled promotion workflows with full audit trails
+- Standardize Helm chart/versioning and configuration layering
+- Embed release metadata (commit, artifact digest, change ticket, approvals)
+- Define freeze controls and emergency override procedures with logging
+
+## 12) Implement Progressive Delivery Patterns
+
+Safe velocity requires controlled exposure of production changes.
+
+- Use canary/blue-green rollouts with automatic health evaluation
+- Gate progression on SLO/error budget burn, latency, and business KPIs
+- Run automated smoke and synthetic checks at each rollout phase
+- Trigger automated rollback on threshold breach with incident annotation
+
+## 13) Enforce Cluster Runtime Controls
+
+Secure runtime behavior with guardrails that are always on.
+
+- Enforce Pod Security and restricted defaults across namespaces
+- Apply NetworkPolicy segmentation for app, data, and platform zones
+- Use admission policy-as-code (Kyverno/OPA) for invariant enforcement
+- Continuously collect runtime audit events and suspicious behavior signals
+
+## 14) Operationalize Observability and Release Intelligence
+
+Every deployment should be measurable, explainable, and attributable.
+
+- Correlate logs, metrics, traces, and deploy events by release ID
+- Build dashboards for golden signals plus Rails-specific KPIs
+- Alert on release regressions with service and business impact context
+- Track DORA metrics and change failure trends by team/service
+
+## 15) Engineer Resilience and Continuity
+
+Resilience is validated through regular failure practice, not assumptions.
+
+- Automate backups and routinely verify restore integrity
+- Test RTO/RPO targets in scheduled disaster recovery drills
+- Run game days and dependency-failure simulations
+- Validate rollback playbooks under production-like load
+
+## 16) Run Continuous DevSecOps Governance
+
+Mature teams institutionalize improvement, evidence, and accountability.
+
+- Apply risk-based triage SLAs for vulnerabilities and control gaps
+- Automate patch/update cadences with staged rollout policies
+- Collect compliance evidence directly from pipeline and cluster telemetry
+- Perform recurring threat modeling and control effectiveness reviews
