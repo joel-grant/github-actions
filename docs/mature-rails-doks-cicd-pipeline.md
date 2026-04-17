@@ -1,17 +1,23 @@
 # Highly Mature CI/CD Pipeline for Ruby on Rails on DigitalOcean Kubernetes (DOKS)
 
-## Architecture-Ordered Checklist (Ideal Rollout Order)
+## CI/CD Architecture Steps (Ideal Implementation Order)
 
-- [ ] Layer 1: Platform and team foundations (environments, ownership, SLOs, on-call, runbooks)
-- [ ] Layer 2: Source control and change management (branch protection, CODEOWNERS, signed commits, mandatory reviews)
-- [ ] Layer 3: CI quality gates (lint, tests, coverage, security checks, flaky test management)
-- [ ] Layer 4: Build and supply chain integrity (reproducible builds, SBOMs, image signing, provenance attestations)
-- [ ] Layer 5: Secrets, identity, and access (OIDC short-lived credentials, Vault/secret manager, no long-lived static keys)
-- [ ] Layer 6: Delivery orchestration to DOKS (progressive delivery, automated verification, instant rollback)
-- [ ] Layer 7: Kubernetes runtime security and policy (least privilege, network policy, admission controls)
-- [ ] Layer 8: Observability and release verification (logs, metrics, traces, business KPIs, deployment correlation)
-- [ ] Layer 9: Resilience and recovery (backups, disaster recovery drills, game days, multi-zone readiness)
-- [ ] Layer 10: Continuous DevSecOps governance (risk triage, compliance evidence, patching SLAs, dependency hygiene)
+- [ ] Step 1: Define service boundaries, architecture principles, and team ownership model
+- [ ] Step 2: Design environment topology (preview, staging, production) with promotion contracts
+- [ ] Step 3: Establish repository governance (branch protection, CODEOWNERS, signed commits, mandatory reviews)
+- [ ] Step 4: Standardize workflow architecture (reusable GitHub Actions workflows, runner strategy, concurrency controls)
+- [ ] Step 5: Implement dependency and secret hygiene gates (SCA, secret scanning, lockfile policies)
+- [ ] Step 6: Build fast CI validation stages (lint, unit, integration, system, migration safety checks)
+- [ ] Step 7: Enforce quality and security release criteria (coverage floors, SAST, policy checks, required statuses)
+- [ ] Step 8: Build hardened, reproducible artifacts (deterministic Docker builds, non-root images, pinned bases)
+- [ ] Step 9: Establish software supply chain trust (SBOMs, vulnerability gates, image signing, provenance attestations)
+- [ ] Step 10: Implement workload identity and secrets architecture (OIDC federation, external secret manager, RBAC)
+- [ ] Step 11: Define deployment control plane (GitOps/controlled promotion, Helm standards, release metadata)
+- [ ] Step 12: Implement progressive delivery patterns (canary/blue-green, health gates, automated rollback)
+- [ ] Step 13: Enforce cluster runtime controls (Pod Security, NetworkPolicy, admission policy-as-code)
+- [ ] Step 14: Operationalize observability and release intelligence (logs, metrics, traces, deployment correlation)
+- [ ] Step 15: Engineer resilience and continuity (backup/restore testing, DR drills, game days, multi-zone readiness)
+- [ ] Step 16: Run continuous DevSecOps governance (risk triage SLAs, compliance evidence, patch cadence, threat modeling)
 
 ---
 
