@@ -1,17 +1,17 @@
 # Highly Mature CI/CD Pipeline for Ruby on Rails on DigitalOcean Kubernetes (DOKS)
 
-## Summary Checklist
+## Architecture-Ordered Checklist (Ideal Rollout Order)
 
-- [ ] Establish platform and team operating model (environments, ownership, SLOs, on-call, runbooks)
-- [ ] Enforce secure source control and change management (branch protection, CODEOWNERS, signed commits, mandatory reviews)
-- [ ] Implement fast CI quality gates (lint, tests, coverage, security checks, flaky test management)
-- [ ] Harden build and artifact pipeline (reproducible builds, SBOMs, image signing, provenance attestations)
-- [ ] Secure secrets and identity (OIDC short-lived credentials, Vault/secret manager, no long-lived static keys)
-- [ ] Deploy with progressive delivery (canary/blue-green, automated verification, instant rollback)
-- [ ] Enforce Kubernetes runtime security and policy controls (least privilege, network policy, admission controls)
-- [ ] Enable full-stack observability (logs, metrics, traces, business KPIs, deployment correlation)
-- [ ] Validate resilience and recovery (backups, disaster recovery drills, game days, multi-zone readiness)
-- [ ] Operate continuous DevSecOps governance (risk triage, compliance evidence, patching SLAs, dependency hygiene)
+- [ ] Layer 1: Platform and team foundations (environments, ownership, SLOs, on-call, runbooks)
+- [ ] Layer 2: Source control and change management (branch protection, CODEOWNERS, signed commits, mandatory reviews)
+- [ ] Layer 3: CI quality gates (lint, tests, coverage, security checks, flaky test management)
+- [ ] Layer 4: Build and supply chain integrity (reproducible builds, SBOMs, image signing, provenance attestations)
+- [ ] Layer 5: Secrets, identity, and access (OIDC short-lived credentials, Vault/secret manager, no long-lived static keys)
+- [ ] Layer 6: Delivery orchestration to DOKS (progressive delivery, automated verification, instant rollback)
+- [ ] Layer 7: Kubernetes runtime security and policy (least privilege, network policy, admission controls)
+- [ ] Layer 8: Observability and release verification (logs, metrics, traces, business KPIs, deployment correlation)
+- [ ] Layer 9: Resilience and recovery (backups, disaster recovery drills, game days, multi-zone readiness)
+- [ ] Layer 10: Continuous DevSecOps governance (risk triage, compliance evidence, patching SLAs, dependency hygiene)
 
 ---
 
@@ -112,4 +112,3 @@ Security is continuous, not a one-time gate.
 - Compliance evidence automatically collected from pipeline and cluster events
 - Quarterly threat modeling and control validation
 - Executive reporting on security posture, release risk, and reliability outcomes
-
